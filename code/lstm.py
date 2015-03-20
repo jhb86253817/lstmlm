@@ -5,7 +5,7 @@ import time
 import json
 from collections import defaultdict
 from collections import OrderedDict
-from scipy import stats
+#from scipy import stats
 import random
 import numpy
 import theano
@@ -177,12 +177,13 @@ def ppl(data, rnn):
     ppls = [rnn.ppl(x,y) for (x,y) in zip(data[0], data[1])]
     mean_ppl = numpy.mean(list(ppls))
 
-    return mean_ppl
+    return float(mean_ppl)
 
 def random_generator(probs):
-    xk = xrange(10000)
-    custm = stats.rv_discrete(name='custm', values=(xk,probs))
-    return custm.rvs(size=1)
+    #xk = xrange(10000)
+    #custm = stats.rv_discrete(name='custm', values=(xk,probs))
+    #return custm.rvs(size=1)
+    return None
 
 def next_word(text, train_dict, index2word, rnn, length):
     words = text.split()
@@ -212,7 +213,7 @@ def main(param=None):
             'seed': 345,
             'nepochs': 20,
             'savemodel': True,
-            'loadmodel': True,
+            'loadmodel': False,
             'folder':'../model',
             'train': True,
             'test': False}
@@ -249,14 +250,14 @@ def main(param=None):
 
     if param['train'] == True:
 
-        round_num = 2 
+        round_num = 1 
         train_data_labels = zip(train_data[0], train_data[1])
         print "Training..."
         start = time.time()
 
         for j in xrange(round_num):
             i = 1
-            for (x,y) in train_data_labels:
+            for (x,y) in train_data_labels[:1000]:
                 rnn.sentence_train(x, y, lr_current)
                 if i%1000 == 0:
                     print "Round %d, case %d" % (j+1, i)
