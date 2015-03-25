@@ -106,13 +106,10 @@ class RNNLM(object):
         sentence_gradients = [T.grad(sentence_nll, param) for param in self.params]
         sentence_updates = [(param, param - lr*g) for param,g in zip(self.params, sentence_gradients)]
 
-        # perplexity of a sentence
-        sentence_ppl = T.pow(2, sentence_nll)
-
         # theano functions to compile
         self.classify = theano.function(inputs=[idxs], outputs=y_pred, allow_input_downcast=True)
         self.prob_dist = theano.function(inputs=[idxs], outputs=p_y_given_x_sentence, allow_input_downcast=True)
-        self.ppl = theano.function(inputs=[idxs, y_sentence], outputs=sentence_ppl, allow_input_downcast=True)
+        self.nll = theano.function(inputs=[idxs, y_sentence], outputs=sentence_nll, allow_input_downcast=True)
         self.sentence_train = theano.function(inputs=[idxs, y_sentence, lr],
                                               outputs=sentence_nll,
                                               updates=sentence_updates,
@@ -174,10 +171,10 @@ def load_data():
     return train_data, valid_data, test_data, train_dict
 
 def ppl(data, rnn):
-    ppls = [rnn.ppl(x,y) for (x,y) in zip(data[0], data[1])]
-    mean_ppl = numpy.mean(list(ppls))
+    nlls = [rnn.nll(x,y) for (x,y) in zip(data[0], data[1])]
+    mean_nll = numpy.mean(list(nlls))
 
-    return float(mean_ppl)
+    return float(2**mean_nll)
 
 def random_generator(probs):
     #xk = xrange(10000)
@@ -207,15 +204,15 @@ def load_pre_params(folder):
 def main(param=None):
     if not param:
         param = {
-            'lr': 0.05,
+            'lr': 0.1,
             'nhidden': 50,
             # number of hidden units
             'seed': 345,
             'nepochs': 20,
-            'savemodel': False,
+            'savemodel': True,
             'loadmodel': True,
-            'folder':'../model',
-            'train': False,
+            'folder':'../model/lstm2',
+            'train': True,
             'test': False}
     print param
 
@@ -281,9 +278,6 @@ def main(param=None):
 
         end = time.time()
         print "%f seconds in total\n" % (end-start)
-
-    test_ppl = ppl(train_data, rnn)
-    print "Test perplexity of train data: %f \n" % test_ppl
 
     if param['test'] == True:
         text = "<bos> japan is"
