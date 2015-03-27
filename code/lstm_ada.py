@@ -264,13 +264,13 @@ def load_pre_params(folder):
 def main(param=None):
     if not param:
         param = {
-            'lr': 0.1,
+            'lr': 0.05,
             'nhidden': 50,
             # number of hidden units
             'seed': 345,
             'nepochs': 20,
             'savemodel': True,
-            'loadmodel': True,
+            'loadmodel': False,
             'folder':'../model/lstm_ada',
             'train': True,
             'test': False}

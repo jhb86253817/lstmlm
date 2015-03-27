@@ -1,5 +1,5 @@
-# LSTM with peepholes
-# Adagrad
+# LSTM without peepholes
+# Adam
 from __future__ import division
 import os
 import time
@@ -35,25 +35,16 @@ class RNNLM(object):
         self.whi = theano.shared(name='whi',
                                 value=0.02 * numpy.random.randn(nh, nh)
                                 .astype(theano.config.floatX))
-        self.wci = theano.shared(name='wci',
-                                value=0.02 * numpy.random.randn(nh, nh)
-                                .astype(theano.config.floatX))
         self.wxf = theano.shared(name='wxf',
                                 value=0.02 * numpy.random.randn(nw, nh)
                                 .astype(theano.config.floatX))
         self.whf = theano.shared(name='whf',
                                 value=0.02 * numpy.random.randn(nh, nh)
                                 .astype(theano.config.floatX))
-        self.wcf = theano.shared(name='wcf',
-                                value=0.02 * numpy.random.randn(nh, nh)
-                                .astype(theano.config.floatX))
         self.wxo = theano.shared(name='wxo',
                                 value=0.02 * numpy.random.randn(nw, nh)
                                 .astype(theano.config.floatX))
         self.who = theano.shared(name='who',
-                                value=0.02 * numpy.random.randn(nh, nh)
-                                .astype(theano.config.floatX))
-        self.wco = theano.shared(name='wco',
                                 value=0.02 * numpy.random.randn(nh, nh)
                                 .astype(theano.config.floatX))
         self.w = theano.shared(name='w',
@@ -81,78 +72,19 @@ class RNNLM(object):
                                 value=numpy.zeros(nh,
                                 dtype=theano.config.floatX))
 
-        self.wxg_acc = theano.shared(name='wxg_acc',
-                                value=numpy.zeros((nw, nh),
-                                dtype=theano.config.floatX))
-        self.whg_acc = theano.shared(name='whg_acc',
-                                value=numpy.zeros((nh, nh),
-                                dtype=theano.config.floatX))
-        self.wxi_acc = theano.shared(name='wxi_acc',
-                                value=numpy.zeros((nw, nh),
-                                dtype=theano.config.floatX))
-        self.whi_acc = theano.shared(name='whi_acc',
-                                value=numpy.zeros((nh, nh),
-                                dtype=theano.config.floatX))
-        self.wci_acc = theano.shared(name='wci_acc',
-                                value=numpy.zeros((nh, nh),
-                                dtype=theano.config.floatX))
-        self.wxf_acc = theano.shared(name='wxf_acc',
-                                value=numpy.zeros((nw, nh),
-                                dtype=theano.config.floatX))
-        self.whf_acc = theano.shared(name='whf_acc',
-                                value=numpy.zeros((nh, nh),
-                                dtype=theano.config.floatX))
-        self.wcf_acc = theano.shared(name='wcf_acc',
-                                value=numpy.zeros((nh, nh),
-                                dtype=theano.config.floatX))
-        self.wxo_acc = theano.shared(name='wxo_acc',
-                                value=numpy.zeros((nw, nh),
-                                dtype=theano.config.floatX))
-        self.who_acc = theano.shared(name='who_acc',
-                                value=numpy.zeros((nh, nh),
-                                dtype=theano.config.floatX))
-        self.wco_acc = theano.shared(name='wco_acc',
-                                value=numpy.zeros((nh, nh),
-                                dtype=theano.config.floatX))
-        self.w_acc = theano.shared(name='w_acc',
-                                value=numpy.zeros((nh, nw),
-                                dtype=theano.config.floatX))
-        self.bg_acc = theano.shared(name='bg_acc',
-                                value=numpy.zeros(nh,
-                                dtype=theano.config.floatX))
-        self.bi_acc = theano.shared(name='bi_acc',
-                                value=numpy.zeros(nh,
-                                dtype=theano.config.floatX))
-        self.bf_acc = theano.shared(name='bf_acc',
-                                value=numpy.zeros(nh,
-                                dtype=theano.config.floatX))
-        self.bo_acc = theano.shared(name='bo_acc',
-                                value=numpy.zeros(nh,
-                                dtype=theano.config.floatX))
-        self.b_acc = theano.shared(name='b_acc',
-                               value=numpy.zeros(nw,
-                               dtype=theano.config.floatX))
-        self.h0_acc = theano.shared(name='h0_acc',
-                                value=numpy.zeros(nh,
-                                dtype=theano.config.floatX))
-        self.c0_acc = theano.shared(name='c0_acc',
-                                value=numpy.zeros(nh,
-                                dtype=theano.config.floatX))
-
         #bundle
-        self.params = [self.wxg, self.whg, self.wxi, self.whi, self.wci, self.wxf, self.whf, self.wcf, self.wxo, self.who, self.wco, self.w, self.bg, self.bi, self.bf, self.bo, self.b, self.h0, self.c0]
-        self.params_acc = [self.wxg_acc, self.whg_acc, self.wxi_acc, self.whi_acc, self.wci_acc, self.wxf_acc, self.whf_acc, self.wcf_acc, self.wxo_acc, self.who_acc, self.wco_acc, self.w_acc, self.bg_acc, self.bi_acc, self.bf_acc, self.bo_acc, self.b_acc, self.h0_acc, self.c0_acc]
+        self.params = [self.wxg, self.whg, self.wxi, self.whi, self.wxf, self.whf, self.wxo, self.who, self.w, self.bg, self.bi, self.bf, self.bo, self.b, self.h0, self.c0]
 
         idxs = T.ivector()
         x = self.index[idxs]
         y_sentence = T.ivector('y_sentence') # labels
 
         def recurrence(x_t, c_tm1, h_tm1):
-            i_t = T.nnet.sigmoid(T.dot(x_t, self.wxi) + T.dot(h_tm1, self.whi) + T.dot(c_tm1, self.wci) + self.bi)
-            f_t = T.nnet.sigmoid(T.dot(x_t, self.wxf) + T.dot(h_tm1, self.whf) + T.dot(c_tm1, self.wcf) + self.bf)
+            i_t = T.nnet.sigmoid(T.dot(x_t, self.wxi) + T.dot(h_tm1, self.whi) + self.bi)
+            f_t = T.nnet.sigmoid(T.dot(x_t, self.wxf) + T.dot(h_tm1, self.whf) + self.bf)
+            o_t = T.nnet.sigmoid(T.dot(x_t, self.wxo) + T.dot(h_tm1, self.who) + self.bo)
             g_t = T.tanh(T.dot(x_t, self.wxg) + T.dot(h_tm1, self.whg) + self.bg)
             c_t = f_t * c_tm1 + i_t * g_t
-            o_t = T.nnet.sigmoid(T.dot(x_t, self.wxo) + T.dot(h_tm1, self.who) + T.dot(c_t, self.wco) + self.bo)
             h_t = o_t * T.tanh(c_t)
             s_t = T.nnet.softmax(T.dot(h_t, self.w) + self.b)
             return [c_t, h_t, s_t]
@@ -172,17 +104,8 @@ class RNNLM(object):
         sentence_nll = -T.mean(T.log2(p_y_given_x_sentence)
                                [T.arange(x.shape[0]), y_sentence])
 
-        sentence_gradients = [T.grad(sentence_nll, param) for param in self.params]
-
-        #Adagrad
-        sentence_updates = []
-        for param_i, grad_i, acc_i in zip(self.params, sentence_gradients, self.params_acc):
-            acc = acc_i + T.sqr(grad_i)
-            sentence_updates.append((param_i, param_i - lr*grad_i/(T.sqrt(acc)+1e-5)))
-            sentence_updates.append((acc_i, acc))
-
-        # SGD
-        #sentence_updates = [(param, param - lr*g) for param,g in zip(self.params, sentence_gradients)]
+        #Adam
+        sentence_updates = self.Adam(sentence_nll, self.params, lr)
 
         # theano functions to compile
         self.classify = theano.function(inputs=[idxs], outputs=y_pred, allow_input_downcast=True)
@@ -201,6 +124,27 @@ class RNNLM(object):
         for param in self.params:
             param.set_value(numpy.load(os.path.join(folder,
                             param.name + '.npy')))
+
+    def Adam(self, cost, params, lr, b1=0.1, b2=0.01, e=1e-8):
+        updates = []
+        grads = T.grad(cost, params)
+        i = theano.shared(floatX(0.))
+        i_t = i + 1.
+        fix1 = 1. - (1. - b1)**i_t
+        fix2 = 1. - (1. - b2)**i_t
+        lr_t = lr * (T.sqrt(fix2) / fix1)
+        for p, g in zip(params, grads):
+            m = theano.shared(p.get_value() * 0.)
+            v = theano.shared(p.get_value() * 0.)
+            m_t = (b1 * g) + ((1. - b1) * m)
+            v_t = (b2 * T.sqr(g)) + ((1. - b2) * v)
+            g_t = m_t / (T.sqrt(v_t) + e)
+            p_t = p - (lr_t * g_t)
+            updates.append((m, m_t))
+            updates.append((v, v_t))
+            updates.append((p, p_t))
+        updates.append((i, i_t))
+        return updates
 
 def load_data():
     train_file = open('../data/ptb.train.txt', 'r')
@@ -287,9 +231,9 @@ def main(param=None):
             # number of hidden units
             'seed': 345,
             'nepochs': 20,
-            'savemodel': True,
+            'savemodel': False,
             'loadmodel': False,
-            'folder':'../model/lstm_ada_peep',
+            'folder':'../model/lstm_adam',
             'train': True,
             'test': False}
     print param
@@ -326,7 +270,7 @@ def main(param=None):
     if param['train'] == True:
 
         round_num = 1 
-        train_data_labels = zip(train_data[0], train_data[1])[:20000]
+        train_data_labels = zip(train_data[0], train_data[1])
         print "Training..."
         start = time.time()
         case_start = time.time()
